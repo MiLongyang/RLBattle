@@ -7,8 +7,9 @@ import numpy as np
 from .rnn_agent import RNNAgent
 from .q_mixer import QMixer
 from common.episode_replay_buffer import EpisodeReplayBuffer
+from ..base_algorithm import BaseAlgorithm
 
-class QMIX:
+class QMIX(BaseAlgorithm):
     """
     QMIX 算法主类
     """
@@ -133,3 +134,17 @@ class QMIX:
 
     def add_experience(self, obs, actions, rewards, next_obs, dones):
         self.replay_buffer.add(obs, actions, rewards, next_obs, dones)
+
+    def save_models(self, path, episode_num):
+        """
+        保存 QMIX 的模型
+        """
+        torch.save(self.agent_net.state_dict(), f"{path}/agent_net_{episode_num}.pth")
+        torch.save(self.mixer_net.state_dict(), f"{path}/mixer_net_{episode_num}.pth")
+
+    def load_models(self, path, episode_num):
+        """
+        加载 QMIX 的模型
+        """
+        self.agent_net.load_state_dict(torch.load(f"{path}/agent_net_{episode_num}.pth"))
+        self.mixer_net.load_state_dict(torch.load(f"{path}/mixer_net_{episode_num}.pth"))

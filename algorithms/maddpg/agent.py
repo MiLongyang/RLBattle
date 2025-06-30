@@ -8,11 +8,13 @@ class Agent:
     """
     MADDPG 智能体
     """
-    def __init__(self, agent_id, obs_dim, action_dim, num_agents, state_dim, actor_lr, critic_lr, device):
+    def __init__(self, agent_id, obs_dim, action_dim, num_agents, state_dim, actor_lr, critic_lr, device, action_low, action_high):
         self.agent_id = agent_id
         self.obs_dim = obs_dim
         self.action_dim = action_dim
         self.device = device
+        self.action_low = action_low
+        self.action_high = action_high
 
         # Actor 网络
         self.actor = Actor(obs_dim, action_dim).to(device)
@@ -36,7 +38,7 @@ class Agent:
         if add_noise:
             noise = np.random.randn(self.action_dim) * noise_std
             action += noise
-            action = np.clip(action, -1.0, 1.0) # 假设动作空间是[-1, 1]
+            action = np.clip(action, self.action_low, self.action_high) # 使用动态的动作范围
             
         return action
 

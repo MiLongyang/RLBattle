@@ -5,12 +5,13 @@ import torch.nn.functional as F
 import numpy as np
 from .agent import Agent
 from common.replay_buffer import ReplayBuffer
+from ..base_algorithm import BaseAlgorithm
 
-class MADDPG:
+class MADDPG(BaseAlgorithm):
     """
     MADDPG 算法主类
     """
-    def __init__(self, obs_dims, action_dims, num_agents, state_dim, args, device):
+    def __init__(self, obs_dims, action_dims, num_agents, state_dim, args, device, action_space_low, action_space_high):
         self.num_agents = num_agents
         self.args = args
         self.device = device
@@ -25,7 +26,9 @@ class MADDPG:
                 state_dim=state_dim,
                 actor_lr=args.actor_lr,
                 critic_lr=args.critic_lr,
-                device=device
+                device=device,
+                action_low=action_space_low,
+                action_high=action_space_high
             ))
         
         self.replay_buffer = ReplayBuffer(args.buffer_size_maddpg, self.num_agents, obs_dims, action_dims, state_dim)
@@ -107,3 +110,19 @@ class MADDPG:
         向经验回放池中添加一条经验
         """
         self.replay_buffer.add(obs, state, actions, rewards, next_obs, next_state, dones)
+
+    def save_models(self, path, episode_num):
+        """
+        保存所有智能体的模型
+        """
+        for i, agent in enumerate(self.agents):
+            torch.save(agent.actor.state_dict(), f"{path}/actor_agent_{i}_{episode_num}.pth")
+            torch.save(agent.critic.state_dict(), f"{path}/critic_agent_{i}_{episode_num}.pth")
+
+    def load_models(self, path, episode_num):
+        """
+        加载所有智能体的模型
+        """
+        for i, agent in enumerate(self.agents):
+            agent.actor.load_state_dict(torch.load(f"{path}/actor_agent_{i}_{episode_num}.pth"))
+            agent.critic.load_state_dict(torch.load(f"{path}/critic_agent_{i}_{episode_num}.pth"))

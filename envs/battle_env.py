@@ -7,11 +7,12 @@ class BattleEnv:
     对抗环境
     这是一个占位符类, 用于定义接口和方便框架搭建
     """
-    def __init__(self, env_config):
-        self.num_agents = env_config["num_agents"]
-        self.state_dim = env_config["state_dim"]
-        self.action_dim = env_config["action_dim"]
-        self.episode_limit = env_config["episode_limit"]
+    def __init__(self, args):
+        self.num_agents = args.num_agents
+        self.state_dim = args.state_dim_env
+        self.action_dim = args.action_dim_env
+        self.episode_limit = args.episode_limit
+        self.task_type = args.task_type
 
         # ... 环境初始化 ...
 
@@ -56,6 +57,9 @@ class BattleEnv:
             # 对于MADDPG, obs_dims 和 action_dims 可能是列表
             "obs_dims": [self.state_dim] * self.num_agents,
             "action_dims": [self.action_dim] * self.num_agents,
+            # 提供动作空间范围, 以便算法进行正确的动作裁剪
+            "action_space_low": -1.0,
+            "action_space_high": 1.0,
         }
 
     def close(self):

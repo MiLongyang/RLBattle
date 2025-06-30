@@ -16,6 +16,7 @@ def get_args():
     parser.add_argument("--gamma", type=float, default=0.99, help="折扣因子")
     parser.add_argument("--seed", type=int, default=123, help="随机种子")
     parser.add_argument("--epsilon_decay_steps", type=int, default=50000, help="QMIX中Epsilon衰减的总步数")
+    parser.add_argument("--task_type", type=str, default="strike", choices=['recon', 'feint', 'strike'], help="任务类型: 'recon'(侦察), 'feint'(佯攻), 'strike'(协同打击)")
 
     # --- MADDPG 专属参数 ---
     parser.add_argument("--buffer_size_maddpg", type=int, default=int(1e6), help="MADDPG的经验回放池大小")
@@ -35,6 +36,9 @@ def get_args():
     parser.add_argument("--num_agents", type=int, default=3, help="智能体数量")
     parser.add_argument("--state_dim_env", type=int, default=10, help="环境状态维度 (示例)")
     parser.add_argument("--action_dim_env", type=int, default=2, help="环境动作维度 (示例)")
+
+    # --- 模型加载参数 ---
+    parser.add_argument("--load_model_episode", type=str, default="final", help="指定要加载进行评估的模型的回合数 (例如, '50', '100', 或者 'final')")
 
     args = parser.parse_args()
     return args 

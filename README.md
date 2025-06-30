@@ -1,14 +1,16 @@
 # RLBattle - 强化学习对战平台
 
-本项目是一个基于强化学习的多智能体对抗仿真平台，旨在模拟导弹在海战场景中的博弈过程。平台支持多种强化学习算法，并允许用户通过命令行或配置文件灵活调整实验参数。
+本项目是一个基于强化学习的多智能体对抗仿真平台，旨在模拟导弹在海战场景中的博弈过程。平台支持多种主流强化学习算法，并提供了高度模块化和可扩展的框架，便于二次开发与研究。
 
 ##  项目特点
 
-- **模块化设计**: 算法、环境、通用模块（如经验回放池）高度解耦，易于扩展和维护。
+- **模块化设计**: 算法、环境、通用模块高度解耦，易于扩展和维护。
 - **双算法支持**: 内置 MADDPG 和 QMIX 两种主流多智能体强化学习算法。
-- **动态设备选择**: 自动检测并优先使用 CUDA GPU进行训练，若无GPU则无缝切换至CPU。
-- **集中式参数管理**: 所有超参数通过 `arguments.py` 集中管理，清晰明了，方便调参。
-- **清晰的接口定义**: 为环境和算法定义了清晰的接口规范，便于团队协作。
+- **可配置任务**: 支持多种作战任务类型（如侦察、佯攻、协同打击），便于进行多场景研究。
+- **动态设备选择**: 自动检测并优先使用 CUDA GPU 进行训练，若无 GPU 则无缝切换至CPU。
+- **集中式参数管理**: 所有超参数通过 `arguments.py` 集中管理，支持命令行覆盖，方便调参和批量实验。
+- **模型自动存取**: 训练过程自动保存模型检查点，并提供独立的评估脚本加载指定模型进行性能评估。
+- **清晰的扩展接口**: 通过`BaseAlgorithm`抽象基类定义了清晰的算法扩展规范，二次开发成本低。
 
 ## 项目目标
 
@@ -23,14 +25,17 @@
 ```
 RLBattle/
 |-- algorithms/                # 强化学习算法
+|   |-- base_algorithm.py      # 所有算法的抽象基类
 |   |-- maddpg/                # MADDPG 算法实现
 |   |-- qmix/                  # QMIX 算法实现
 |-- common/                    # 通用模块
-|   |-- replay_buffer.py       # MADDPG 使用的经验回放池
-|   |-- episode_replay_buffer.py # QMIX 使用的回合经验回放池
+|   |-- replay_buffer.py       # (用于MADDPG) 随机采样经验回放池
+|   |-- episode_replay_buffer.py # (用于QMIX) 按回合采样经验回放池
 |-- envs/                      # 对抗环境
 |   |-- battle_env.py          # 战场环境接口定义
-|-- main.py                    # 训练与评估主入口
+|-- models/                    # 存放训练好的模型
+|-- main.py                    # 训练主入口
+|-- evaluate.py                # 模型评估入口
 |-- arguments.py               # 统一参数配置
 |-- requirements.txt           # 项目依赖
 |-- README.md                  # 项目说明
@@ -38,48 +43,53 @@ RLBattle/
 
 ## 快速开始
 
-1.  **安装依赖**:
-    ```bash
-    pip install -r requirements.txt
-    ```
+### 1. 安装依赖
 
-2.  **配置参数**:
-    - **方式一 (推荐)**: 直接修改 `arguments.py` 文件中的默认值。
-    - **方式二**: 通过命令行传入参数，例如：
-      ```bash
-      python main.py --algorithm QMIX --num_episodes 5000
-      ```
+```bash
+pip install -r requirements.txt
+```
 
-3.  **开始训练**:
-    ```bash
-    python main.py
-    ```
-    程序将自动选择设备并开始训练。
+### 2. 训练模型
+
+- **使用默认参数训练**:
+  ```bash
+  python main.py
+  ```
+
+- **指定算法和任务类型进行训练**:
+  ```bash
+  python main.py --algorithm QMIX --task_type feint
+  ```
+  训练好的模型将自动保存在 `models/` 目录下，以 `[算法名]_[任务类型]` 的格式命名。
+
+### 3. 评估模型
+
+- **评估最新训练好的模型**:
+  ```bash
+  python evaluate.py
+  ```
+
+- **评估指定算法、任务和回合数的模型**:
+  ```bash
+  python evaluate.py --algorithm QMIX --task_type feint --load_model_episode 100
+  ```
 
 ## 核心接口说明
 
-本框架的核心是实现"配置 -> 启动 -> 训练"的自动化流程。各主要模块的接口作用如下：
+-   **`arguments.py`**: 项目的唯一参数配置入口。提供 `get_args()` 函数，返回一个包含所有可配置参数的对象。
 
--   **`arguments.py`**:
-    -   **作用**: 项目的唯一参数配置入口。
-    -   **接口**: 提供 `get_args()` 函数，返回一个包含所有可配置参数的对象。其他模块不应有任何硬编码的参数。
+-   **`main.py`**: 统一的训练主入口。它会根据参数自动初始化环境和算法，执行训练主循环，并定期保存模型。
 
--   **`main.py`**:
-    -   **作用**: 统一的训练主入口，是整个项目的"指挥官"。
-    -   **接口**: 运行 `python main.py` 即可启动。它会根据参数自动初始化环境和指定的算法，并执行训练主循环。
+-   **`evaluate.py`**: 独立的模型评估入口。它会加载指定模型，在环境中运行并输出最终的性能指标。
 
--   **`envs/battle_env.py`**:
-    -   **作用**: 对抗环境的占位符，定义了环境必须遵循的接口规范。
-    -   **接口**:
-        -   `__init__(env_config)`: 接收环境配置。
-        -   `reset()`: 重置环境，返回初始观测 `obs`。
-        -   `step(actions)`: 执行一步，返回 `next_obs`, `reward`, `done`, `info`。**`info`字典必须包含全局状态 `state` 和 `next_state`**。
-        -   `get_env_info()`: 返回包含环境维度信息的字典。
+-   **`envs/battle_env.py`**: 定义了环境必须遵循的接口规范。
+    -   `step(actions)`: 核心方法，必须返回包含全局状态 `state` 和 `next_state` 的 `info` 字典。
 
--   **算法类 (e.g., `algorithms.maddpg.maddpg.MADDPG`)**:
-    -   **作用**: 封装特定算法的全部逻辑。
-    -   **接口**:
-        -   `__init__(..., args, device)`: 接收维度信息、参数对象和计算设备。
-        -   `select_actions(obs, ...)`: 根据观测返回动作。
-        -   `learn()`: 从经验池采样并执行一次学习/更新。
+-   **`algorithms/base_algorithm.py`**: 定义了算法的抽象基类。任何新算法都应继承它，并实现其核心方法。
+
+-   **算法类 (e.g., `MADDPG`, `QMIX`)**: 封装了特定算法的全部逻辑。
+    -   `__init__(...)`: 初始化网络、优化器等。
+    -   `select_actions(...)`: 根据观测返回动作。
+    -   `learn()`: 执行一次学习更新。
+    -   `save_models(...) / load_models(...)`: 保存和加载模型权重。
 

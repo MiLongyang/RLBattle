@@ -2,6 +2,7 @@
 
 import torch
 import numpy as np
+import os
 from arguments import get_args
 from envs.battle_env import BattleEnv
 from algorithms.maddpg.maddpg import MADDPG
@@ -17,14 +18,8 @@ def main():
     print(f"当前使用的设备: {device}")
 
     # 1. 初始化环境
-    # 创建一个临时的env_config字典
-    env_config = {
-        "num_agents": args.num_agents,
-        "state_dim": args.state_dim_env,
-        "action_dim": args.action_dim_env,
-        "episode_limit": args.episode_limit
-    }
-    env = BattleEnv(env_config)
+    # 将完整的args对象传递给环境, 以便环境可以根据task_type等参数进行配置
+    env = BattleEnv(args)
     env_info = env.get_env_info()
 
     num_agents = env_info["num_agents"]
@@ -32,15 +27,19 @@ def main():
     obs_dims = env_info["obs_dims"]
     action_dims = env_info["action_dims"]
     
+    # 为保存模型创建目录
+    save_dir = f"./models/{args.algorithm.upper()}_{args.task_type}"
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    
     # 2. 根据配置选择并初始化算法
     algorithm_name = args.algorithm.upper()
     print(f"选择算法: {algorithm_name}")
 
     if algorithm_name == "MADDPG":
-        # 将 args 和 device 传递给算法
-        agent_group = MADDPG(obs_dims, action_dims, num_agents, state_dim, args, device)
+        agent_group = MADDPG(obs_dims, action_dims, num_agents, state_dim, args, device,
+                             env_info["action_space_low"], env_info["action_space_high"])
     elif algorithm_name == "QMIX":
-        # 将 args 和 device 传递给算法
         agent_group = QMIX(obs_dims, action_dims, num_agents, state_dim, args, device)
     else:
         raise ValueError(f"未知算法: '{args.algorithm}'. 支持的算法包括: ['MADDPG', 'QMIX']")
@@ -105,6 +104,12 @@ def main():
 
         print(f"Episode {episode + 1}/{args.num_episodes}, Reward: {episode_reward}, Epsilon: {epsilon:.2f}")
 
+        # 每隔50个回合保存一次模型
+        if (episode + 1) % 50 == 0:
+            agent_group.save_models(save_dir, episode + 1)
+
+    # 训练结束后最后保存一次
+    agent_group.save_models(save_dir, "final")
     env.close()
 
 if __name__ == '__main__':
