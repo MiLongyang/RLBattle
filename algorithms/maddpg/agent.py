@@ -8,7 +8,7 @@ class Agent:
     """
     MADDPG 智能体
     """
-    def __init__(self, agent_id, obs_dim, action_dim, num_agents, state_dim, actor_lr, critic_lr, device, action_low, action_high):
+    def __init__(self, agent_id, obs_dim, action_dim, num_agents, state_dim, actor_lr, critic_lr, device, action_low, action_high, action_dims):
         self.agent_id = agent_id
         self.obs_dim = obs_dim
         self.action_dim = action_dim
@@ -22,9 +22,11 @@ class Agent:
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
 
-        # Critic 网络
-        self.critic = Critic(state_dim, action_dim, num_agents).to(device)
-        self.target_critic = Critic(state_dim, action_dim, num_agents).to(device)
+        # Critic 网络 - 修正维度计算
+        # Critic的输入是: state_dim + sum(所有智能体的action_dim)
+        total_action_dim = sum(action_dims)
+        self.critic = Critic(state_dim, total_action_dim, 1).to(device)  # num_agents=1因为我们已经计算了总维度
+        self.target_critic = Critic(state_dim, total_action_dim, 1).to(device)
         self.target_critic.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr)
 
