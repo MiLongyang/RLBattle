@@ -1,13 +1,98 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-
+import json
 def get_args():
     """
     定义并返回所有训练参数
     """
     parser = argparse.ArgumentParser(description="强化学习对战平台参数配置")
 
+    def get_default_ship_params():
+        """
+        获取默认舰船参数配置
+        """
+        return {
+            "red": [
+                {
+                    "type": "destroyer",  # 舰船类型
+                    "name": "红方驱逐舰-1",  # 舰船名称
+                    "hp": 10,  # 舰船生命值
+                    "pos": [5, 5],  # 初始位置 [x, y]
+                    "missiles": [  # 搭载导弹列表
+                        "YJ-18", "YJ-18"  # 导弹类型
+                    ]
+                },
+                {
+                    "type": "frigate",  # 舰船类型
+                    "name": "红方护卫舰-1",  # 舰船名称
+                    "hp": 10,  # 舰船生命值
+                    "pos": [3, 2],  # 初始位置 [x, y]
+                    "missiles": [  # 搭载导弹列表
+                        "YJ-83", "YJ-83"  # 导弹类型
+                    ]
+                }
+            ],
+            "blue": [
+                {
+                    "type": "destroyer",  # 舰船类型
+                    "name": "蓝方驱逐舰-1",  # 舰船名称
+                    "hp": 5,  # 舰船生命值
+                    "pos": [30, 40],  # 初始位置 [x, y]
+                    "tactical_value": 1.0,  # 战术价值
+                    "threat": 1.2,  # 威胁值
+                    "defense": 1.0,  # 防御能力
+                    "missiles": [
+                        "YJ-12", "YJ-12"
+                    ]  # 搭载导弹列表
+                },
+                {
+                    "type": "frigate",  # 舰船类型
+                    "name": "蓝方护卫舰-1",  # 舰船名称
+                    "hp": 10,  # 舰船生命值
+                    "pos": [40, 30],  # 初始位置 [x, y]
+                    "tactical_value": 0.8,  # 战术价值
+                    "threat": 0.8,  # 威胁值
+                    "defense": 0.8,  # 防御能力
+                    "missiles": [
+                        "YJ-83", "YJ-83"
+                    ]  # 搭载导弹列表
+                }
+            ]
+        }
+
+    def get_default_missile_params():
+        """
+        获取默认导弹参数配置
+        """
+        return {
+            "type_list": [
+                {
+                    "type": "YJ-12",  # 导弹类型
+                    "name": "鹰击-12超音速反舰导弹",  # 导弹名称
+                    "max_speed": 5.0,  # 最大速度
+                    "max_turn_angle": 90,  # 最大转向角（度）
+                    "range": 100,  # 最大射程
+                    "damage": 5,  # 伤害值
+                },
+                {
+                    "type": "YJ-83",  # 导弹类型
+                    "name": "鹰击-83反舰导弹",  # 导弹名称
+                    "max_speed": 8.0,  # 最大速度
+                    "max_turn_angle": 90,  # 最大转向角（度）
+                    "range": 120,  # 最大射程
+                    "damage": 3,  # 伤害值
+                },
+                {
+                    "type": "YJ-18",  # 导弹类型
+                    "name": "鹰击-18远程反舰导弹",  # 导弹名称
+                    "max_speed": 10.0,  # 最大速度
+                    "max_turn_angle": 90,  # 最大转向角（度）
+                    "range": 70,  # 最大射程
+                    "damage": 8,  # 伤害值
+                }
+            ]
+        }
     # --- 通用参数 ---
     parser.add_argument("--algorithm", type=str, default="MADDPG", help="选择算法: 'MADDPG' 或 'QMIX'")
     parser.add_argument("--num_episodes", type=int, default=10000, help="总训练回合数")
@@ -41,11 +126,28 @@ def get_args():
     parser.add_argument("--log_interval", type=int, default=10, help="日志输出间隔（回合数）")
     parser.add_argument("--eval_interval", type=int, default=100, help="评估间隔（回合数）")
     parser.add_argument("--eval_episodes", type=int, default=10, help="评估回合数")
-    
-    # --- 环境参数 (占位) ---
-    parser.add_argument("--num_agents", type=int, default=3, help="智能体数量")
-    parser.add_argument("--state_dim_env", type=int, default=10, help="环境状态维度 (示例)")
-    parser.add_argument("--action_dim_env", type=int, default=2, help="环境动作维度 (示例)")
+
+    # --- 环境参数  ---
+    parser.add_argument("--num_red", type=int, default=4, help="红方智能体数量")
+    parser.add_argument("--num_blue", type=int, default=4, help="蓝方智能体数量")
+    parser.add_argument("--state_dim_env", type=int, default=7, help="环境状态维度(每个导弹7维)")
+    parser.add_argument("--action_dim_env", type=int, default=2, help="环境动作维度")
+
+    # 舰船和导弹参数使用默认配置
+    parser.add_argument("--ship_params", type=str, default=json.dumps(get_default_ship_params()),
+                        help="舰船参数，json字符串")
+    parser.add_argument("--missile_params", type=str, default=json.dumps(get_default_missile_params()),
+                        help="导弹参数，json字符串")
+
+    # 任务特定奖励权重
+    parser.add_argument("--w_recon_stealth", type=float, default=10.0, help="侦察任务-隐蔽性奖励权重")
+    parser.add_argument("--w_recon_distance", type=float, default=5.0, help="侦察任务-接近目标奖励权重")
+    parser.add_argument("--w_recon_survival", type=float, default=3.0, help="侦察任务-生存奖励权重")
+    parser.add_argument("--w_feint_deception", type=float, default=10.0, help="佯攻任务-欺骗效果奖励权重")
+    parser.add_argument("--w_feint_survival", type=float, default=5.0, help="佯攻任务-生存奖励权重")
+    parser.add_argument("--w_strike_approach", type=float, default=3.0, help="打击任务-接近目标奖励权重")
+    parser.add_argument("--w_strike_hit", type=float, default=5.0, help="打击任务-命中奖励权重")
+    parser.add_argument("--w_strike_sync", type=float, default=1.0, help="打击任务-协同奖励权重")
 
     # --- 模型加载参数 ---
     parser.add_argument("--load_model_episode", type=str, default="final", help="指定要加载进行评估的模型的回合数 (例如, '50', '100', 或者 'final')")
