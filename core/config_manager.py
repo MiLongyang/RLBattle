@@ -84,6 +84,13 @@ class ConfigManager:
         if custom_config:
             final_config.update(custom_config)
         
+        # 设置算法特定的动作类型（如果没有自定义设置）
+        if 'action_type' not in final_config:
+            if algorithm_name == 'QMIX':
+                final_config['action_type'] = 'discrete'
+            else:  # MADDPG, MAPPO
+                final_config['action_type'] = 'continuous'
+        
         # 添加基本信息
         final_config.update({
             'algorithm_name': algorithm_name,

@@ -45,6 +45,9 @@ class BattleEnv(gym.Env):
         self.total_agents = self.num_red + self.num_blue  # 总智能体数量
         self.state_dim = args.state_dim_env
         self.action_dim = 2  # 连续动作空间: [ax, ay]
+        
+        # 动作空间类型支持
+        self.action_type = getattr(args, 'action_type', 'continuous')
 
         # 加载舰船和导弹参数
         self.ship_params = json.loads(args.ship_params)
@@ -107,6 +110,10 @@ class BattleEnv(gym.Env):
             - info: 环境信息字典
         """
         self.timestep += 1
+        
+        # 动作格式转换和验证
+        actions = self._validate_and_convert_actions(actions)
+        
         red_actions = actions[:self.num_red]
         blue_actions = actions[self.num_red:]
         self._update_velocities(red_actions, blue_actions)
@@ -613,6 +620,101 @@ class BattleEnv(gym.Env):
             "action_space_low": -1.0,
             "action_space_high": 1.0,
         }
+
+    def _validate_and_convert_actions(self, actions: list) -> list:
+        """验证和转换动作格式
+        
+        Args:
+            actions: 原始动作列表
+            
+        Returns:
+            转换后的动作列表，每个动作都是[ax, ay]格式
+        """
+        converted_actions = []
+        
+        for i, action in enumerate(actions):
+            try:
+                if self.action_type == 'discrete':
+                    # 离散动作转换为连续动作
+                    converted_action = self._discrete_to_continuous(action)
+                else:
+                    # 连续动作验证和格式化
+                    converted_action = self._validate_continuous_action(action)
+                
+                converted_actions.append(converted_action)
+                
+            except Exception as e:
+                # 如果转换失败，使用默认动作[0.0, 0.0]
+                print(f"Warning: Action conversion failed for agent {i}: {e}")
+                converted_actions.append([0.0, 0.0])
+        
+        return converted_actions
+    
+    def _discrete_to_continuous(self, discrete_action) -> list:
+        """将离散动作转换为连续动作
+        
+        Args:
+            discrete_action: 离散动作索引或数组
+            
+        Returns:
+            连续动作[ax, ay]
+        """
+        # 处理不同的输入格式
+        if isinstance(discrete_action, (list, np.ndarray)):
+            if len(discrete_action) == 0:
+                action_idx = 4  # 默认停止动作
+            else:
+                action_idx = int(discrete_action[0]) if len(discrete_action) > 0 else 4
+        else:
+            action_idx = int(discrete_action)
+        
+        # 9个离散动作对应9个方向
+        action_map = {
+            0: [-1.0, -1.0],  # 左上
+            1: [-1.0, 0.0],   # 左
+            2: [-1.0, 1.0],   # 左下
+            3: [0.0, -1.0],   # 上
+            4: [0.0, 0.0],    # 停止
+            5: [0.0, 1.0],    # 下
+            6: [1.0, -1.0],   # 右上
+            7: [1.0, 0.0],    # 右
+            8: [1.0, 1.0],    # 右下
+        }
+        
+        # 确保动作索引在有效范围内
+        action_idx = max(0, min(8, action_idx))
+        return action_map[action_idx]
+    
+    def _validate_continuous_action(self, action) -> list:
+        """验证和格式化连续动作
+        
+        Args:
+            action: 连续动作
+            
+        Returns:
+            格式化的连续动作[ax, ay]
+        """
+        # 处理不同的输入格式
+        if isinstance(action, (list, tuple)):
+            if len(action) >= 2:
+                return [float(action[0]), float(action[1])]
+            elif len(action) == 1:
+                return [float(action[0]), 0.0]
+            else:
+                return [0.0, 0.0]
+        elif isinstance(action, np.ndarray):
+            if action.ndim == 0:
+                # 0维数组（标量）
+                return [float(action), 0.0]
+            elif action.size >= 2:
+                return [float(action.flat[0]), float(action.flat[1])]
+            elif action.size == 1:
+                return [float(action.flat[0]), 0.0]
+            else:
+                return [0.0, 0.0]
+        else:
+            # 标量值
+            return [float(action), 0.0]
 
     def close(self):
         """

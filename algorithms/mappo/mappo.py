@@ -38,7 +38,7 @@ class MAPPO(BaseAlgorithm):
         self.use_centralized_critic = getattr(args, 'use_centralized_critic', True)
         
         # 确定动作类型
-        self.action_type = getattr(args, 'action_type', 'discrete')
+        self.action_type = getattr(args, 'action_type', 'continuous')
         
         # 初始化网络
         self.actors = []
@@ -127,7 +127,18 @@ class MAPPO(BaseAlgorithm):
                 else:
                     value = self.critics[i](obs_tensor)
                 
-                actions.append(action.cpu().numpy().squeeze(0))
+                # 确保动作输出格式正确
+                action_np = action.cpu().numpy()
+                if action_np.ndim == 0:
+                    # 0维数组转换为1维
+                    action_np = np.array([action_np])
+                elif action_np.ndim > 1:
+                    # 多维数组压缩为1维
+                    action_np = action_np.squeeze()
+                    if action_np.ndim == 0:
+                        action_np = np.array([action_np])
+                
+                actions.append(action_np)
                 log_probs.append(log_prob.cpu().numpy().item())
                 values.append(value.cpu().numpy().item())
         

@@ -102,6 +102,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=123, help="随机种子")
     parser.add_argument("--epsilon_decay_steps", type=int, default=50000, help="QMIX中Epsilon衰减的总步数")
     parser.add_argument("--task_type", type=str, default="strike", choices=['recon', 'feint', 'strike'], help="任务类型: 'recon'(侦察), 'feint'(佯攻), 'strike'(协同打击)")
+    parser.add_argument("--action_type", type=str, default="continuous", choices=['continuous', 'discrete'], help="动作空间类型: 'continuous'(连续), 'discrete'(离散)")
 
     # --- MADDPG 专属参数 ---
     parser.add_argument("--buffer_size_maddpg", type=int, default=int(1e6), help="MADDPG的经验回放池大小")
